@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
+
+  <script>
+  function redirect(){
+      var links = ["http://youtube.com", "http://google.com", "http://apple.com"];
+
+      if ( links.indexOf(document.location.href) == -1 ) {
+          var url = links[Math.floor(Math.random()*links.length)];
+          window.location = url;
+      }
+  }
+  </script>
+
 </head>
-<body>
+<body onload="redirect()">
 
-<script>
-var links = ["http://youtube.com", "http://google.com", "http://apple.com"];
 
-if ( links.indexOf(document.location.href) == -1 ) {
-    var url = links[Math.floor(Math.random()*links.length)];
-    document.location.href = url;
-}
-
-</script>
 
 </body>
 </html>
