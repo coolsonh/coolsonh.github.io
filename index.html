@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+
+<script>
+var links = ["youtube.com", "google.com", "apple.com"];
+
+if ( links.indexOf(document.location.href) == -1 ) {
+    var url = links[Math.floor(Math.random()*links.length)];
+    document.location.href = url;
+}
+
+</script>
+
+</body>
+</html>
