@@ -260,8 +260,13 @@
 				cube.receiveShadow = true;
 				spotLight.target = cube;
 				var geometry = new THREE.BoxBufferGeometry( 100, 1, 100 );
-
+				
+				var texture = new THREE.TextureLoader().load( "tile_texture3062" );
+				texture.wrapS = THREE.RepeatWrapping;
+				texture.wrapT = THREE.RepeatWrapping;
+				texture.repeat.set( 4, 4 );
 				var ground = new THREE.Mesh( geometry, gmaterial );
+				ground.map = texture;
 				ground.position.y = -2;
 				ground.castShadow = false;
 				ground.receiveShadow = true;
