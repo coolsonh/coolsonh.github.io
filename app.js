@@ -261,10 +261,10 @@
 				spotLight.target = cube;
 				var geometry = new THREE.BoxBufferGeometry( 100, 1, 100 );
 				
-				var texture = new THREE.TextureLoader().load( "tile_texture3062" );
+				var texture = new THREE.TextureLoader().load( "tile_texture3062.jpg" );
 				texture.wrapS = THREE.RepeatWrapping;
 				texture.wrapT = THREE.RepeatWrapping;
-				texture.repeat.set( 4, 4 );
+				texture.repeat.set( 8, 8 );
 				var ground = new THREE.Mesh( geometry, gmaterial );
 				ground.map = texture;
 				ground.position.y = -2;
