@@ -1,10 +1,31 @@
+//app.js
+//Colson Hadley
+//Final Project
+//12/6/2018
+
 var camera, scene, renderer, clock, stats;
 var dirLight, spotLight;
 var cube, wrapper, text, wall, ground;
-
 var stretch = 0;
+var gltf;
+
 init();
 animate();
+
+
+//Set up and add to dom
+function init() {
+	initScene();
+	initMisc();
+	document.body.appendChild(renderer.domElement);
+	window.addEventListener('resize', onWindowResize, false);
+}
+
+//Animate function
+function animate() {
+	requestAnimationFrame(animate);
+	render();
+}
 
 function setUpAnimation() {
 	// POSITION
@@ -19,6 +40,7 @@ function setUpAnimation() {
 		],
 		THREE.InterpolateSmooth);
 
+	//When stretch is 1 it is at the best stretch
 	var a, b, c, d;
 	a = 1.2 - stretch * .2;
 	b = .7 + stretch * .3;
@@ -59,7 +81,7 @@ function setUpAnimation() {
 }
 
 
-
+//Keyboard Controls
 document.addEventListener("keypress", onDocumentKeyDown, false);
 
 function onDocumentKeyDown(event) {
@@ -81,10 +103,10 @@ function onDocumentKeyDown(event) {
 		ground.material.wireframe = !ground.material.wireframe;
 		text.material.wireframe = !text.material.wireframe;
 
-		//Camera
-	} else if (key == "Z") { //Camera forward
+		//Text Slide
+	} else if (key == "Z") { //Move Left
 		text.translateX(-1);
-	} else if (key == "X") { //Camera backward
+	} else if (key == "X") { //Move Right
 		text.translateX(1);
 
 		//Camera
@@ -111,35 +133,20 @@ function onDocumentKeyDown(event) {
 		dirLight.intensity ^= 1;
 	} else if (key == "3") { //Toggle light
 		pointLight.intensity ^= 1;
-	} else if (key == "A") { //Camera forward
+	} else if (key == "A") { //Ambient Light up
 		ambLight.intensity += .3;
-	} else if (key == "a") { //Camera backward
+	} else if (key == "a") { //Ambient Light down
 		ambLight.intensity -= .3;
-	} else if (key == "D") { //Camera left
-		cube.position.x += xSpeed;
-	} else if (key == "d") { //Camera right
-		cube.position.x += xSpeed;
-	} else if (key == "S") { //Camera up
-		cube.position.x += xSpeed;
-	} else if (key == "s") { //Camera down
-		cube.position.x += xSpeed;
-	} else if (key == "E") { //Camera up
+	} else if (key == "E") { //Emissive Light up
 		cube.material.emissiveIntensity += .3;
 		pointLight.intensity += .2;
-	} else if (key == "e") { //Camera down
+	} else if (key == "e") { //Emissive Light down
 		cube.material.emissiveIntensity -= .3;
 		pointLight.intensity -= .2;
 	}
 };
 
-
-function init() {
-	initScene();
-	initMisc();
-	document.body.appendChild(renderer.domElement);
-	window.addEventListener('resize', onWindowResize, false);
-}
-
+//glb import into scene
 function importRobot() {
 	// Instantiate a loader
 	var loader = new THREE.GLTFLoader();
@@ -155,13 +162,21 @@ function importRobot() {
 			gltf.scenes;
 			gltf.cameras;
 			gltf.asset;
-			gltf.scene.position.set(-12, -2, 0)
-			gltf.scene.rotation.set(0, -1.2, 0)
+			gltf.scene.position.set(-12, -2, 0);
+			gltf.scene.rotation.set(0, -1.2, 0);
+
+			gltf.scene.traverse(function(node) {
+				if (node instanceof THREE.Mesh) {
+					node.castShadow = true;
+				}
+			});
 
 		}
 	);
 }
 
+
+//Main function for creating the scene
 function initScene() {
 	var tmaterial = new THREE.MeshPhongMaterial({
 		color: 0xd0dddf,
@@ -178,6 +193,7 @@ function initScene() {
 	camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
 	camera.position.set(0, 5, 37);
 	scene = new THREE.Scene();
+
 	// Lights
 	ambLight = new THREE.AmbientLight(0x505050);
 	scene.add(ambLight);
@@ -203,8 +219,6 @@ function initScene() {
 		textGeometry.computeVertexNormals();
 
 		text = new THREE.Mesh(textGeometry, tmaterial)
-		//text.position.x = -textGeometry.boundingBox.max.x/2;
-		//text.position.y = textGeometry.boundingBox.max.y/2;
 		text.castShadow = true;
 		text.receiveShadow = true;
 		text.position.z = -5;
@@ -225,8 +239,7 @@ function initScene() {
 	spotLight.shadow.mapSize.height = 1024;
 	scene.add(spotLight);
 
-	dirLight = new THREE.DirectionalLight(0xFAD6A5);//Sunset
-	//dirLight = new THREE.DirectionalLight(0xFfaaaa);//Sunset
+	dirLight = new THREE.DirectionalLight(0xFAD6A5); //Sunset
 	dirLight.name = 'Dir. Light';
 	dirLight.position.set(-12, 5, 10);
 	dirLight.intensity = .4;
@@ -242,7 +255,7 @@ function initScene() {
 	scene.add(dirLight);
 
 	// Geometry
-	var texture = new THREE.TextureLoader().load("zebra_print_vector_pattern.jpg");
+	var texture = new THREE.TextureLoader().load("textures/zebra_print_vector_pattern.jpg");
 	var texColor = new THREE.TextureLoader().load("textures/FabricDenim003_COL_VAR1_1K.jpg");
 	var texNormal = new THREE.TextureLoader().load("textures/FabricDenim003_NRM_1K.jpg");
 	var material = new THREE.MeshStandardMaterial({
@@ -293,61 +306,10 @@ function initScene() {
 	//animation
 	wrapper = new THREE.Object3D();
 
-	//vt+9.81t^2
-
-	// POSITION
-	var positionKF = new THREE.VectorKeyframeTrack('.position', [20, 30, 33, 40, 45, 50, 57],
-		[0, 0, 0,
-			0, -.4, 0,
-			0, 1, 0,
-			0, 13, 0,
-			0, 1, 0,
-			0, -.4, 0,
-			0, 0, 0
-		],
-		THREE.InterpolateSmooth);
-
-	var a, b, c, d;
-	a = 1.2 - stretch * .2;
-	b = .7 + stretch * .3;
-	c = .85 + stretch * .15;
-	d = 1.4 - stretch * .4;
-
-	a = 1 + stretch * .2;
-	b = 1 - stretch * .3;
-	c = 1 - stretch * .15;
-	d = 1 + stretch * .4;
-
-	// SCALE
-	var scaleKF = new THREE.VectorKeyframeTrack('.scale', [20, 30, 33, 40, 45, 50, 57],
-		[1, 1, 1,
-			a, b, a,
-			c, d, c,
-			1, 1, 1,
-			c, d, c,
-			a, b, a,
-			1, 1, 1
-		],
-		THREE.InterpolateSmooth);
-
-	// create an animation sequence with the tracks
-	var clip = new THREE.AnimationClip('Action', 70, [scaleKF, positionKF]);
-
-	// setup the AnimationMixer
-	mixer = new THREE.AnimationMixer(wrapper);
-
-	// create a ClipAction and set it to play
-	var clipAction = mixer.clipAction(clip);
-	clipAction.timeScale = 19;
-	clipAction.play();
-
-	wrapper.add(cube);
-	wrapper.add(pointLight);
-	scene.add(wrapper);
-
-
+	setUpAnimation();
 }
 
+//Initialize renderer and clock
 function initMisc() {
 	renderer = new THREE.WebGLRenderer({
 		antialias: true
@@ -360,23 +322,16 @@ function initMisc() {
 	clock = new THREE.Clock();
 }
 
+//Update window
 function onWindowResize() {
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 	renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function animate() {
-	requestAnimationFrame(animate);
-	render();
-}
-
-function renderScene() {
-	renderer.render(scene, camera);
-}
-
+//Render function will get called every frame
 function render() {
 	var delta = clock.getDelta();
 	mixer.update(delta);
-	renderScene();
+	renderer.render(scene, camera);
 }
