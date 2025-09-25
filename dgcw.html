@@ -1,0 +1,758 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>YouTube Multi-Channel Viewer — Table View (RSS, LocalStorage)</title>
+
+<style>
+.root{
+   --muted: #94a3b8;
+    --text: #e5e7eb;
+    --accent: #60a5fa;
+    --ok: #22c55e;
+    --danger: #ef4444;
+    --border: #243044;
+    --row: #0b0d12;
+    --rowHover: #101626;
+  }
+  html, body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { background:#0b0d12; border-bottom:1px solid var(--border); padding:16px 20px; position:sticky; top:0; z-index:5; }
+  header .title { font-size:18px; font-weight:700; }
+  header .subtitle { color:var(--muted); font-size:12px; margin-top:6px; }
+  a { color:#93c5fd; }
+  .container { padding:16px 20px 40px; max-width:1200px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .panel h3 { margin:0 0 12px; font-size:16px; }
+  .flex { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  textarea, input[type=text], select {
+    width:100%; background:#0b0d12; border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px; outline:none;
+  }
+  button, .btn {
+    background:#1f2a44; color:var(--text); border:1px solid var(--border); border-radius:8px;
+    padding:8px 12px; font-weight:600; cursor:pointer;
+  }
+  button:hover { background:#22304f; }
+  .btn-danger { background:rgba(239,68,68,.1); border-color:var(--danger); color:#fecaca; }
+  .btn-ok { background:rgba(34,197,94,.1); border-color:var(--ok); color:#dcfce7; }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { background:#0b0d12; border:1px solid var(--border); padding:6px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; }
+  .chip .x { cursor:pointer; color:#fca5a5; font-weight:700; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin-top:8px; }
+  .tab { padding:10px 12px; cursor:pointer; border-radius:8px 8px 0 0; background:#0b0d12; color:var(--muted); }
+  .tab.active { background:#111827; color:#e5e7eb; border:1px solid var(--border); border-bottom:none; }
+  .tabpane { display:none; padding-top:16px; }
+  .tabpane.active { display:block; }
+
+  /* Table */
+  table { width:100%; border-collapse:collapse; background:var(--row); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  thead th {
+    text-align:left; font-weight:700; font-size:13px; color:var(--muted);
+    background:#0e1422; border-bottom:1px solid var(--border); padding:10px;
+    position:sticky; top:106px; z-index:2;
+  }
+  tbody tr.video-row { border-bottom:1px solid var(--border); }
+  tbody tr.video-row:hover { background:var(--rowHover); }
+  td { padding:10px; vertical-align:middle; }
+  .nowrap { white-space:nowrap; }
+  .title-cell { font-weight:600; }
+  .badge {
+    display:inline-flex; gap:6px; align-items:center; border:1px solid #14532d; color:#bbf7d0;
+    background:rgba(34,197,94,.1); padding:2px 8px; border-radius:999px; font-size:12px;
+  }
+  .badge.inprogress { border-color:#1e3a8a; color:#bfdbfe; background:rgba(96,165,250,.1); }
+  .pbar { height:8px; width:120px; background:#0b0d12; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .pfill { height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  .pfill.done { background:var(--ok); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .player-row td { padding:0; background:#06070b; }
+  .player-box { aspect-ratio:16/9; width:100%; }
+  .hint { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">YouTube Multi‑Channel Viewer — Table View</div>
+  <div class="subtitle">
+    Add <strong>Channel IDs</strong> (get them at
+    <a href="https://ytpeeks/channel-id-finderytpeek.com</a>).
+    Uses <code>feeds/videos.xml</code> — no API key. Tracks progress locally via the YouTube IFrame API.
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Add Channels -->
+  <div class="panel">
+    <h3>Add Channels</h3>
+    <div class="muted small" style="margin-bottom:8px;">
+      Paste one per line. Accepts <code>UC…</code> or <code>https://www.youtube.com/channel/UC…</code>.
+      Handles like <code>@name</code> aren’t supported by RSS—use the finder link above.
+    </div>
+    <textarea id="channelsInput" rows="3" placeholder="UC_x5XG1OV2P6uZZ5FSM9Ttw
+https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
+    <div class="flex" style="margin-top:8px;">
+      <button id="addChannelsBtn" class="btn-ok">Add Channels</button>
+      <button id="refreshBtn">Refresh Feeds</button>
+      <button id="clearBtn" class="btn-danger">Clear All Data</button>
+      <span id="status" class="muted small"></span>
+    </div>
+
+    <div style="margin-top:12px;">
+      <h3>Channels</h3>
+      <div id="channelsList" class="chips"></div>
+    </div>
+  </div>
+
+  <!-- Backup & Settings -->
+  <div class="panel">
+    <h3>Backup & Settings</h3>
+    <div class="flex">
+      <button id="exportBtn">Export</button>
+      <label class="btn" for="importFile" style="cursor:pointer;">Import</label>
+      <input id="importFile" type="file" accept="application/json" style="display:none;">
+      <label class="flex" style="gap:8px;">
+        <input id="useProxy" type="checkbox"> <span class="small">Use CORS Proxy (helps if feeds fail)</span>
+      </label>
+      <select id="proxyUrl" style="width:260px;">
+        <option value="https://api.allorigins.win/raw?url=">AllOrigins (raw)</option>
+        <option value="https://r.jina.ai/">r.jina.ai</option>
+        <option value="https://cors.isomorphic-git.org/">isomorphic-git CORS</option>
+      </select>
+      <div class="small">Auto‑mark at: <span id="thVal">90%</span>
+        <input id="threshold" type="range" min="50" max="100" value="90">
+      </div>
+    </div>
+    <div class="hint" style="margin-top:8px;">
+      If feeds don’t load due to CORS, enable the proxy and try another provider.
+    </div>
+  </div>
+
+  <!-- Tables -->
+  <div class="panel">
+    <!-- Global filters toolbar (applies to all tabs) -->
+    <div class="flex" style="justify-content:space-between; margin-bottom:8px;">
+      <div id="summary" class="muted small">No videos loaded yet.</div>
+      <div class="flex">
+        <input id="searchBox" type="text" placeholder="Search title/channel…" style="width:240px;">
+        <select id="channelFilter" style="width:220px;">
+          <option value="">All channels</option>
+        </select>
+        <label class="flex small" style="gap:6px;">
+          <input id="hideShorts" type="checkbox"> Hide Shorts (≤ 60s / #shorts)
+        </label>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="unwatched">Unwatched</div>
+      <div class="tab" data-tab="all">All</div>
+      <div class="tab" data-tab="watched">Watched</div>
+    </div>
+
+    <div id="tab-unwatched" class="tabpane active">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%;">Title</th>
+            <th style="width:24%;">Channel</th>
+            <th class="nowrap" style="width:16%;">Published</th>
+            <th style="width:14%;">Progress</th>
+            <th style="width:12%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-unwatched"></tbody>
+      </table>
+    </div>
+
+    <div id="tab-all" class="tabpane">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%;">Title</th>
+            <th style="width:24%;">Channel</th>
+            <th class="nowrap" style="width:16%;">Published</th>
+            <th style="width:14%;">Progress</th>
+            <th style="width:12%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-all"></tbody>
+      </table>
+    </div>
+
+    <div id="tab-watched" class="tabpane">
+      <div class="muted small" style="margin-bottom:8px;">Videos appear here after hitting your threshold or finishing.</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%;">Title</th>
+            <th style="width:24%;">Channel</th>
+            <th class="nowrap" style="width:16%;">Published</th>
+            <th style="width:14%;">Progress</th>
+            <th style="width:12%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-watched"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- YouTube IFrame API is injected dynamically on first play -->
+
+<script>
+/** =========================
+ *  State
+ *  ========================= */
+const STATE_KEY = 'ytMultiState_v4_table_hideShorts';
+const defaultState = {
+  channels: [], // {id, title?}
+  videos: {},   // id -> {watched, progress, lastTime, duration, title, channelId, channelTitle, publishedAt, link}
+  settings: {
+    useProxy: true,
+    proxyUrl: 'https://api.allorigins.win/raw?url=',
+    threshold: 0.9,
+    hideShorts: true  // default ON per your preference
+  },
+  lastUpdated: 0
+};
+let state = loadState();
+
+/** Load & Save */
+function loadState(){
+  try {
+    const s = localStorage.getItem(STATE_KEY);
+    if (!s) return JSON.parse(JSON.stringify(defaultState));
+    const parsed = JSON.parse(s);
+    parsed.settings = Object.assign({}, defaultState.settings, parsed.settings||{});
+    parsed.channels = Array.isArray(parsed.channels) ? parsed.channels : [];
+    parsed.videos = parsed.videos || {};
+    return parsed;
+  } catch { return JSON.parse(JSON.stringify(defaultState)); }
+}
+function saveState(){ state.lastUpdated = Date.now(); localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
+/** Utils */
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?'':d.toLocaleString(); }
+function timeAgo(iso){
+  const d = new Date(iso), now = new Date(), s = Math.floor((now-d)/1000);
+  if (s<60) return `${s}s ago`; const m=Math.floor(s/60); if (m<60) return `${m}m ago`;
+  const h=Math.floor(m/60); if (h<24) return `${h}h ago`; const days=Math.floor(h/24);
+  if (days<30) return `${days}d ago`; const mo=Math.floor(days/30); if (mo<12) return `${mo}mo ago`;
+  const y=Math.floor(mo/12); return `${y}y ago`;
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/** Channel input parsing */
+function extractChannelId(input){
+  input = input.trim(); if (!input) return null;
+  const m=input.match(/youtube\.com\/channel\/(UC[0-9A-Za-z_-]{20,})/i); if (m) return m[1];
+  const m2=input.match(/^(UC[0-9A-Za-z_-]{20,})$/); if (m2) return m2[1];
+  return null;
+}
+
+/** Feed helpers */
+function feedUrlForChannel(channelId){ return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`; }
+
+async function fetchTextWithFallback(url){
+  const useProxy = state.settings.useProxy;
+  const proxyBase = state.settings.proxyUrl || '';
+  const candidates = [];
+  if (!useProxy) candidates.push(url);
+  const encoded = encodeURIComponent(url);
+  if (proxyBase.includes('allorigins')) candidates.push(`${proxyBase}${encoded}`);
+  else if (proxyBase.includes('r.jina.ai')) candidates.push(`${proxyBase}${url}`);
+  else candidates.push(`${proxyBase}${url}`);
+  candidates.push(`https://r.jina.ai/${url}`, `https://cors.isomorphic-git.org/${url}`);
+  let lastErr=null; const tried=new Set();
+  for (const c of candidates){
+    if (tried.has(c)) continue; tried.add(c);
+    try { const res=await fetch(c,{mode:'cors',credentials:'omit'}); if(!res.ok){lastErr=new Error('HTTP '+res.status);continue;}
+      const txt=await res.text(); if (txt) return txt;
+    } catch(e){ lastErr=e; }
+  }
+  throw lastErr||new Error('Fetch failed');
+}
+
+function parseYouTubeFeed(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText,'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Invalid XML');
+  const entries = [...doc.getElementsByTagName('entry')];
+  return entries.map(entry=>{
+    const get = sel => (entry.querySelector(sel)||entry.getElementsByTagName(sel)[0])?.textContent?.trim()||'';
+    const videoId = get('yt\\:videoId') || get('videoId') || (get('id').startsWith('yt:video:') ? get('id').replace('yt:video:','') : '');
+    const channelId = get('yt\\:channelId') || get('channelId') || '';
+    const title = get('title');
+    const author = entry.querySelector('author > name')?.textContent?.trim() || '';
+    const linkEl = entry.querySelector('link[rel="alternate"]');
+    const link = linkEl ? linkEl.getAttribute('href') : (videoId ? `https://www.youtube.com/watch?v=${videoId}` : '');
+    const published = get('published') || get('updated') || '';
+
+    // Try to read duration from RSS (several possible places)
+    let durationSec = 0;
+    const ytDur = entry.querySelector('yt\\:duration');
+    if (ytDur && ytDur.getAttribute) {
+      const s = parseInt(ytDur.getAttribute('seconds')||'0', 10);
+      if (!isNaN(s) && s>0) durationSec = s;
+    }
+    const mc = entry.querySelector('media\\:group > media\\:content') || entry.getElementsByTagName('media:content')[0];
+    if (!durationSec && mc && mc.getAttribute) {
+      const s = parseInt(mc.getAttribute('duration')||'0', 10);
+      if (!isNaN(s) && s>0) durationSec = s;
+    }
+
+    return { videoId, channelId, title, channelTitle: author, link, publishedAt: published, durationSec };
+  }).filter(e=>e.videoId);
+}
+
+/** =========================
+ *  YouTube Player
+ *  ========================= */
+let YT_API_READY=false, pendingPlayerInits=[], players={}; // videoId -> {player,timer,lastSave}
+
+function loadYouTubeAPIOnce(){
+  if (window._ytApiInjected) return;
+  window._ytApiInjected=true;
+  const tag=document.createElement('script'); tag.src="https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = function(){
+  YT_API_READY=true; pendingPlayerInits.forEach(args=>createPlayer(args)); pendingPlayerInits=[];
+};
+
+function ensurePlayer(videoId, container, onReady){
+  if (YT_API_READY && window.YT && YT.Player) createPlayer({videoId, container, onReady});
+  else { loadYouTubeAPIOnce(); pendingPlayerInits.push({videoId, container, onReady}); }
+}
+
+function createPlayer({videoId, container, onReady}){
+  if (players[videoId]?.player?.destroy) { try{ players[videoId].player.destroy(); }catch{} }
+  const origin = (location.origin && location.origin.startsWith('http')) ? location.origin : undefined;
+  const player = new YT.Player(container, {
+    width:'100%', videoId,
+    playerVars:{ enablejsapi:1, rel:0, modestbranding:1, playsinline:1, autoplay:1, origin },
+    events:{
+      onReady:(e)=>{ // resume & autoplay
+        const v=state.videos[videoId];
+        if (v?.lastTime>0){ try{ e.target.seekTo(v.lastTime,true); }catch{} }
+        try { e.target.playVideo(); } catch {}
+        onReady && onReady(e);
+      },
+      onStateChange:(e)=>handleStateChange(videoId,e)
+    }
+  });
+  players[videoId] = { player, timer:null, lastSave:0 };
+}
+
+function handleStateChange(videoId, e){
+  const P = YT.PlayerState; const rec = players[videoId]; if (!rec) return;
+  const start = ()=>{ if (rec.timer) return; rec.timer=setInterval(()=>updateProgress(videoId),1000); };
+  const stop  = ()=>{ if (rec.timer) clearInterval(rec.timer); rec.timer=null; };
+  switch(e.data){
+    case P.PLAYING: start(); break;
+    case P.PAUSED: case P.BUFFERING: case P.CUED: stop(); updateProgress(videoId); break;
+    case P.ENDED:
+      stop();
+      setWatched(videoId, 1.0);
+      collapsePlayerFor(videoId); // auto-collapse on finish
+      break;
+  }
+}
+
+function updateProgress(videoId){
+  const rec = players[videoId]; if (!rec?.player?.getDuration) return;
+  const dur = rec.player.getDuration()||0;
+  const cur = rec.player.getCurrentTime ? rec.player.getCurrentTime() : 0;
+  if (!dur || dur<1) return;
+  const progress = Math.min(1, cur/dur);
+  const v = state.videos[videoId] || {};
+  v.progress=progress; v.lastTime=cur; v.duration=dur; state.videos[videoId]=v;
+  const threshold = state.settings.threshold||0.9;
+  if (!v.watched && progress>=threshold) v.watched=true;
+  const now=Date.now(); if (!rec.lastSave || now-rec.lastSave>5000){ saveState(); rec.lastSave=now; }
+  updateRowState(videoId);
+  renderWatchedTable(); // sync watched tab if flipped
+}
+
+/** Collapse player row for a given videoId */
+function collapsePlayerFor(videoId){
+  $(`tr.player-row[data-for="${videoId}"]`).each((_,tr)=>{
+    const $pr=$(tr); if ($pr.is(':visible')) $pr.hide();
+    const $base=$pr.prev('tr.video-row[data-id="'+videoId+'"]');
+    $base.find('.playbtn').text('Play');
+    try { players[videoId]?.player?.pauseVideo(); } catch {}
+  });
+}
+
+/** Explicit watchers */
+function setWatched(videoId, progress=1){
+  const v=state.videos[videoId]||{}; v.watched=true; v.progress=Math.max(progress, v.progress||0);
+  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderWatchedTable(); renderUnwatchedTable(); updateSummary();
+}
+function setUnwatched(videoId){
+  const v=state.videos[videoId]||{}; v.watched=false;
+  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderWatchedTable(); renderUnwatchedTable(); updateSummary();
+}
+
+/** =========================
+ *  Shorts detection
+ *  ========================= */
+function isShortFromFields({title='', link='', durationSec=0, duration=0}){
+  const dur = Math.floor(durationSec || duration || 0);
+  if (dur > 0) return dur <= 60;              // duration heuristic
+  const t = (title||'').toLowerCase();
+  if (t.includes('#shorts')) return true;     // title hashtag fallback
+  if ((link||'').includes('/shorts/')) return true; // URL form fallback
+  return false;
+}
+
+/** =========================
+ *  Feeds & Rendering
+ *  ========================= */
+let latestFeedItems=[];
+
+async function refreshFeedsUI(){
+  $('#status').text('Refreshing feeds…');
+  try {
+    latestFeedItems = await loadAllFeeds();
+    renderAllTables();
+    $('#status').text(`Loaded ${latestFeedItems.length} videos`);
+  } catch(e){
+    console.error(e);
+    $('#status').html(`<span class="muted" style="color:#fecaca;">Feed error: ${escapeHtml(e.message||'Unknown')}</span>`);
+  }
+}
+
+async function loadAllFeeds(){
+  const items=[]; const channels = state.channels.map(c=>c.id);
+  for (const id of channels){
+    try {
+      const xml = await fetchTextWithFallback(feedUrlForChannel(id));
+      const entries = parseYouTubeFeed(xml);
+      const title = entries[0]?.channelTitle || '';
+      if (title){
+        const c = state.channels.find(x=>x.id===id);
+        if (c && !c.title){ c.title=title; saveState(); }
+      }
+      items.push(...entries);
+    } catch(e){ console.warn('Channel failed', id, e); }
+    await sleep(150);
+  }
+  items.sort((a,b)=> new Date(b.publishedAt)-new Date(a.publishedAt));
+  const seen=new Set(), out=[];
+  for (const it of items){ if (seen.has(it.videoId)) continue; seen.add(it.videoId); out.push(it); }
+  return out;
+}
+
+function renderAllTables(){
+  renderUnwatchedTable();
+  renderAllTable();
+  renderWatchedTable();
+  updateSummary();
+}
+
+function updateSummary(){
+  const all = filteredItems(latestFeedItems).length;
+  const unw = filteredItems(latestFeedItems).filter(it => !state.videos[it.videoId]?.watched).length;
+  $('#summary').text(`${unw} unwatched · ${all} total`);
+}
+
+/** Filter helper (applies channel/search/shorts) */
+function filteredItems(sourceItems){
+  const q = ($('#searchBox').val()||'').toLowerCase();
+  const cf = $('#channelFilter').val()||'';
+  const hideShorts = !!$('#hideShorts').prop('checked');
+  return sourceItems.filter(it=>{
+    if (cf && it.channelId !== cf) return false;
+    if (hideShorts && isShortFromFields(it)) return false;
+    if (!q) return true;
+    const hay = `${it.title} ${it.channelTitle}`.toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function renderUnwatchedTable(){
+  const items = filteredItems(latestFeedItems).filter(it => !state.videos[it.videoId]?.watched);
+  const $tb = $('#tbody-unwatched').empty();
+  items.forEach(it => {
+    ensureVideoStatePrimed(it);
+    const v = state.videos[it.videoId]; const pct = Math.round((v.progress||0)*100);
+    const $row = buildVideoRow(it.videoId, it.title, it.channelTitle||it.channelId, it.publishedAt, pct, v.watched);
+    attachRowHandlers($row, it.videoId);
+    $tb.append($row);
+  });
+}
+
+function renderAllTable(){
+  const items = filteredItems(latestFeedItems);
+  const $tb = $('#tbody-all').empty();
+  items.forEach(it=>{
+    ensureVideoStatePrimed(it);
+    const v = state.videos[it.videoId]; const pct = Math.round((v.progress||0)*100);
+    const $row = buildVideoRow(it.videoId, it.title, it.channelTitle||it.channelId, it.publishedAt, pct, v.watched);
+    attachRowHandlers($row, it.videoId);
+    $tb.append($row);
+  });
+}
+
+function renderWatchedTable(){
+  const q = ($('#searchBox').val()||'').toLowerCase();
+  const cf = $('#channelFilter').val()||'';
+  const hideShorts = !!$('#hideShorts').prop('checked');
+
+  const list = Object.entries(state.videos)
+    .filter(([id,v]) => v.watched)
+    .map(([id,v]) => ({ videoId:id, ...v }))
+    .filter(v => {
+      if (cf && v.channelId !== cf) return false;
+      if (hideShorts && isShortFromFields(v)) return false;
+      if (!q) return true;
+      const hay = `${v.title||''} ${v.channelTitle||''}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b)=> (new Date(b.publishedAt||0)) - (new Date(a.publishedAt||0)));
+  const $tb = $('#tbody-watched').empty();
+  list.forEach(v=>{
+    const pct = Math.round((v.progress||0)*100);
+    const $row = buildVideoRow(v.videoId, v.title||v.videoId, v.channelTitle||v.channelId||'', v.publishedAt||'', pct, true);
+    attachRowHandlers($row, v.videoId);
+    $tb.append($row);
+  });
+}
+
+/** Helpers for rendering rows */
+function ensureVideoStatePrimed(it){
+  const existing = state.videos[it.videoId];
+  if (!existing){
+    state.videos[it.videoId] = {
+      watched:false, progress:0, lastTime:0, duration:it.durationSec||0,
+      title: it.title, channelId: it.channelId, channelTitle: it.channelTitle,
+      publishedAt: it.publishedAt, link: it.link
+    };
+  } else {
+    existing.title ||= it.title; existing.channelId ||= it.channelId; existing.channelTitle ||= it.channelTitle;
+    existing.publishedAt ||= it.publishedAt; existing.link ||= it.link;
+    if (!existing.duration && it.durationSec) existing.duration = it.durationSec;
+  }
+}
+
+function buildVideoRow(videoId, title, channelLabel, publishedAt, pct, watched){
+  return $(`
+    <tr class="video-row" data-id="${videoId}">
+      <td class="title-cell">
+        ${escapeHtml(title)}
+        <span class="badge ${watched ? '' : (pct>0 ? 'inprogress':'')}" style="margin-left:8px; ${watched||pct>0?'':'display:none;'}">
+          ${watched ? 'Watched ✓' : 'In progress'}
+        </span>
+      </td>
+      <td>${escapeHtml(channelLabel)}</td>
+      <td class="nowrap" title="${fmtDate(publishedAt)}">${publishedAt ? timeAgo(publishedAt) : ''}</td>
+      <td><div class="pbar"><div class="pfill ${watched?'done':''}" style="width:${pct}%;"></div></div></td>
+      <td>
+        <div class="actions">
+          <button class="playbtn">Play</button>
+          <button class="markbtn" style="${watched?'display:none;':''}">Mark watched</button>
+          <button class="unmarkbtn" style="${watched?'':'display:none;'}">Unwatch</button>
+          <button class="btn openbtn" title="Open on YouTube">Open ↗</button>
+        </div>
+      </td>
+    </tr>
+  `);
+}
+
+/** Expand/collapse player row after the given row */
+function togglePlayerRow(videoId, baseRow, open){
+  const $base = $(baseRow);
+  let $pr = $base.next();
+  const already = $pr.hasClass('player-row');
+
+  if (open){
+    if (!already){
+      $pr = $(`
+        <tr class="player-row" data-for="${videoId}">
+          <td colspan="5">
+            <div class="player-box">
+              <div id="player-${videoId}" style="width:100%; height:100%;"></div>
+            </div>
+          </td>
+        </tr>
+      `);
+      $base.after($pr);
+      const cont = $pr.find(`#player-${videoId}`)[0];
+      ensurePlayer(videoId, cont, ()=>{});
+    } else {
+      $pr.show();
+      try { players[videoId]?.player?.playVideo(); } catch {}
+    }
+    $base.find('.playbtn').text('Hide');
+  } else {
+    if (already){
+      $pr.hide();
+      try { players[videoId]?.player?.pauseVideo(); } catch {}
+    }
+    $base.find('.playbtn').text('Play');
+  }
+}
+
+/** Wire row handlers */
+function attachRowHandlers($row, videoId){
+  const playToggle = ()=>{
+    const open = !($row.next().hasClass('player-row') && $row.next().is(':visible'));
+    togglePlayerRow(videoId, $row[0], open);
+  };
+  $row.find('.playbtn').on('click', playToggle);
+  $row.on('dblclick', playToggle);
+
+  $row.find('.markbtn').on('click', ()=> setWatched(videoId, 1));
+  $row.find('.unmarkbtn').on('click', ()=> setUnwatched(videoId));
+
+  $row.find('.openbtn').on('click', ()=>{
+    const link = state.videos[videoId]?.link || `https://www.youtube.com/watch?v=${videoId}`;
+    window.open(link, '_blank', 'noopener');
+  });
+}
+
+/** Reflect progress/watched on any matching rows */
+function updateRowState(videoId){
+  const v = state.videos[videoId] || {};
+  const pct = Math.round((v.progress||0)*100);
+  const watched = !!v.watched;
+
+  $(`tr.video-row[data-id="${videoId}"]`).each((_, el)=>{
+    const $row = $(el);
+    const $fill = $row.find('.pfill'); $fill.css('width', pct+'%').toggleClass('done', watched);
+    const $badge = $row.find('.badge');
+    if (watched){ $badge.removeClass('inprogress').show().text('Watched ✓'); $row.find('.markbtn').hide(); $row.find('.unmarkbtn').show(); }
+    else { if (pct>0){ $badge.addClass('inprogress').show().text('In progress'); } else { $badge.hide(); } $row.find('.markbtn').show(); $row.find('.unmarkbtn').hide(); }
+  });
+}
+
+/** Channels UI */
+function renderChannelFilter(){
+  const $sel = $('#channelFilter'); const prev = $sel.val();
+  $sel.empty().append(`<option value="">All channels</option>`);
+  state.channels.forEach(c=>{
+    const label = c.title || c.id; // show channel name when known
+    $sel.append(`<option value="${escapeHtml(c.id)}">${escapeHtml(label)}</option>`);
+  });
+  if (prev) $sel.val(prev);
+}
+
+function renderChannelsList(){
+  const $wrap = $('#channelsList').empty();
+  state.channels.forEach(c=>{
+    const label = c.title ? c.title : c.id;
+    const $chip = $(`
+      <div class="chip">
+        <span>${escapeHtml(label)}</span>
+        <span class="muted small">(${escapeHtml(c.id)})</span>
+        <span class="x" title="Remove" data-id="${c.id}">×</span>
+      </div>`);
+    $chip.find('.x').on('click', ()=>{
+      if (!confirm('Remove this channel?')) return;
+      state.channels = state.channels.filter(x=>x.id!==c.id);
+      saveState(); renderChannelsList(); renderChannelFilter(); refreshFeedsUI();
+    });
+    $wrap.append($chip);
+  });
+  renderChannelFilter();
+}
+
+/** =========================
+ *  Events
+ *  ========================= */
+$('#addChannelsBtn').on('click', ()=>{
+  const raw=$('#channelsInput').val()||'';
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  let added=0, skipped=0;
+  lines.forEach(line=>{
+    const id=extractChannelId(line);
+    if (!id) { skipped++; return; }
+    if (state.channels.some(c=>c.id===id)) { skipped++; return; }
+    state.channels.push({id, title:''}); added++;
+  });
+  saveState(); $('#channelsInput').val('');
+  renderChannelsList(); if (added>0) refreshFeedsUI();
+  $('#status').text(`Added ${added}. ${skipped? 'Skipped '+skipped : ''}`);
+});
+
+$('#refreshBtn').on('click', refreshFeedsUI);
+
+$('#clearBtn').on('click', ()=>{
+  if (!confirm('This clears channels and watch history. Continue?')) return;
+  state = JSON.parse(JSON.stringify(defaultState)); saveState();
+  try { Object.values(players).forEach(p=>p.player?.destroy()); } catch {}
+  players={}; YT_API_READY=false;
+  $('#channelsList').empty();
+  $('#tbody-all, #tbody-watched, #tbody-unwatched').empty();
+  $('#summary').text('No videos loaded yet.'); applySettingsToUI();
+});
+
+$('#exportBtn').on('click', ()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`yt-multi-export-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); a.remove();
+});
+
+$('#importFile').on('change', (e)=>{
+  const file=e.target.files[0]; if (!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result);
+      if (!data || !data.channels || !data.settings) throw new Error('Invalid backup file.');
+      state=Object.assign({}, defaultState, data);
+      state.settings=Object.assign({}, defaultState.settings, state.settings||{});
+      state.channels=Array.isArray(state.channels)?state.channels:[];
+      state.videos=state.videos||{};
+      saveState(); applySettingsToUI(); renderChannelsList(); refreshFeedsUI();
+      $('#status').html('<span style="color:#dcfce7;">Import complete.</span>');
+    } catch(err){ alert('Import failed: '+(err.message||'Unknown error')); }
+    finally { $('#importFile').val(''); }
+  };
+  r.readAsText(file);
+});
+
+/** Tabs */
+$('.tab').on('click', function(){
+  $('.tab').removeClass('active'); $(this).addClass('active');
+  const tab=$(this).data('tab'); $('.tabpane').removeClass('active'); $(`#tab-${tab}`).addClass('active');
+});
+
+/** Filters apply to all tabs */
+$('#searchBox').on('input', ()=>{ renderAllTables(); });
+$('#channelFilter').on('change', ()=>{ renderAllTables(); });
+$('#hideShorts').on('change', function(){
+  state.settings.hideShorts = !!this.checked; saveState(); renderAllTables();
+});
+
+/** Settings */
+function applySettingsToUI(){
+  $('#useProxy').prop('checked', !!state.settings.useProxy);
+  $('#proxyUrl').val(state.settings.proxyUrl || 'https://api.allorigins.win/raw?url=');
+  const pct=Math.round((state.settings.threshold||0.9)*100);
+  $('#threshold').val(pct); $('#thVal').text(`${pct}%`);
+  $('#hideShorts').prop('checked', !!state.settings.hideShorts);
+}
+$('#useProxy').on('change', function(){ state.settings.useProxy=this.checked; saveState(); });
+$('#proxyUrl').on('change', function(){ state.settings.proxyUrl=this.value; saveState(); });
+$('#threshold').on('input', function(){ $('#thVal').text(`${Number(this.value)}%`); });
+$('#threshold').on('change', function(){
+  const pct=Number(this.value||90); state.settings.threshold=Math.max(0.5, Math.min(1.0, pct/100)); saveState();
+});
+
+/** Startup */
+applySettingsToUI();
+renderChannelsList();
+if (state.channels.length) refreshFeedsUI();
+</script>
+</body>
+</html>
