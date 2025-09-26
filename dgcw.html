@@ -81,22 +81,24 @@
 </head>
 <body>
 <header>
-  <div class="title">YouTube Multi‑Channel Viewer — Table View</div>
+  <div class="title">YouTube Multi‑Channel Viewer — Table View
+    <button id="settingsBtn">Settings</button>
+  </div>
   <div class="subtitle">
-    Add <strong>Channel IDs</strong> (get them at
-    <a href="https://ytpeeks/channel-id-finderytpeek.com</a>).
-    Uses <code>feeds/videos.xml</code> — no API key. Tracks progress locally via the YouTube IFrame API.
+    Add <strong>Channel IDs</strong> get them at
+    <a href="https://ytpeek.com/tools/channel-id-finder">ytpeek.com</a>
   </div>
 </header>
 
-<div class="container">
+<div id="settings" class="container">
 
   <!-- Add Channels -->
   <div class="panel">
     <h3>Add Channels</h3>
     <div class="muted small" style="margin-bottom:8px;">
-      Paste one per line. Accepts <code>UC…</code> or <code>https://www.youtube.com/channel/UC…</code>.
-      Handles like <code>@name</code> aren’t supported by RSS—use the finder link above.
+      Paste one per line. Get them at
+    <a href="https://ytpeek.com/tools/channel-id-finder" target="_blank">ytpeek.com</a>
+      Handles like <code>@name</code> aren’t supported by RSS—use the finder link.
     </div>
     <textarea id="channelsInput" rows="3" placeholder="UC_x5XG1OV2P6uZZ5FSM9Ttw
 https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
@@ -135,6 +137,7 @@ https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
     <div class="hint" style="margin-top:8px;">
       If feeds don’t load due to CORS, enable the proxy and try another provider.
     </div>
+  </div>
   </div>
 
   <!-- Tables -->
@@ -205,7 +208,7 @@ https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
       </table>
     </div>
   </div>
-</div>
+
 
 <!-- YouTube IFrame API is injected dynamically on first play -->
 
@@ -654,7 +657,6 @@ function renderChannelsList(){
     const $chip = $(`
       <div class="chip">
         <span>${escapeHtml(label)}</span>
-        <span class="muted small">(${escapeHtml(c.id)})</span>
         <span class="x" title="Remove" data-id="${c.id}">×</span>
       </div>`);
     $chip.find('.x').on('click', ()=>{
@@ -670,6 +672,11 @@ function renderChannelsList(){
 /** =========================
  *  Events
  *  ========================= */
+$('#settingsBtn').on('click', function () {
+    $('#settings').toggle(); // This toggles visibility
+  });
+
+
 $('#addChannelsBtn').on('click', ()=>{
   const raw=$('#channelsInput').val()||'';
   const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
