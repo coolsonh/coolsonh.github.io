@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>YouTube Multi-Channel Viewer — Table View (RSS, LocalStorage)</title>
+<title>YouTube Multi-Channel Viewer — List View</title>
 
 
 <style>
@@ -19,212 +19,215 @@
     --warn: #f59e0b;
     --danger: #ef4444;
     --border: #243044;
+    --row: #11141d;
+    --rowHover: #161b26;
   }
 
   html, body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
-  header { background:#0b0d12; border-bottom:1px solid var(--border); padding:16px 20px; position:sticky; top:0; z-index:5; }
-  header .title { font-size:18px; font-weight:700; }
-  header .subtitle { color:var(--muted); font-size:12px; margin-top:6px; }
+  
+  /* Header */
+  header { background:#0b0d12; border-bottom:1px solid var(--border); padding:16px 20px; position:sticky; top:0; z-index:10; }
+  header .title { font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:space-between; }
+  header .subtitle { color:var(--muted); font-size:12px; margin-top:4px; }
   a { color:#93c5fd; }
-  .container { padding:16px 20px 40px; max-width:1200px; margin:0 auto; }
-  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  
+  /* Layout */
+  .container { padding:16px 12px 60px; max-width:900px; margin:0 auto; }
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
   .panel h3 { margin:0 0 12px; font-size:16px; }
+  
+  /* Inputs & Buttons */
   .flex { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   textarea, input[type=text], select {
     width:100%; background:#0b0d12; border:1px solid var(--border); color:var(--text);
-    border-radius:8px; padding:10px; outline:none;
+    border-radius:8px; padding:12px; outline:none; font-size:16px; /* 16px prevents iOS zoom */
+    box-sizing: border-box;
   }
   button, .btn {
     background:#1f2a44; color:var(--text); border:1px solid var(--border); border-radius:8px;
-    padding:8px 12px; font-weight:600; cursor:pointer;
+    padding:8px 14px; font-weight:600; cursor:pointer; font-size:14px; user-select:none;
   }
   button:hover { background:#22304f; }
   .btn-danger { background:rgba(239,68,68,.1); border-color:var(--danger); color:#fecaca; }
   .btn-ok { background:rgba(34,197,94,.1); border-color:var(--ok); color:#dcfce7; }
   .muted { color:var(--muted); } .small { font-size:12px; }
+
+  /* Chips */
   .chips { display:flex; gap:8px; flex-wrap:wrap; }
-  .chip { background:#0b0d12; border:1px solid var(--border); padding:6px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; }
-  .chip .x { cursor:pointer; color:#fca5a5; font-weight:700; }
+  .chip { background:#0b0d12; border:1px solid var(--border); padding:6px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; font-size:13px; }
+  .chip .x { cursor:pointer; color:#fca5a5; font-weight:700; padding:2px; }
 
   /* Tabs */
-  .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin-top:8px; }
-  .tab { padding:10px 12px; cursor:pointer; border-radius:8px 8px 0 0; background:#0b0d12; color:var(--muted); }
-  .tab.active { background:#111827; color:#e5e7eb; border:1px solid var(--border); border-bottom:none; }
+  .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin-top:12px; overflow-x:auto; padding-bottom:2px; }
+  .tab { padding:10px 16px; cursor:pointer; border-radius:8px 8px 0 0; background:#0b0d12; color:var(--muted); white-space:nowrap; font-size:14px; }
+  .tab.active { background:var(--card); color:#e5e7eb; border:1px solid var(--border); border-bottom:none; font-weight:600; }
   .tabpane { display:none; padding-top:16px; }
   .tabpane.active { display:block; }
 
-  /* Table */
-  table { width:100%; border-collapse:collapse; background:var(--row); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-  thead th {
-    text-align:left; font-weight:700; font-size:13px; color:var(--muted);
-    background:#0e1422; border-bottom:1px solid var(--border); padding:10px;
-    top:106px; z-index:2;
+  /* List/Table View */
+  table { width:100%; border-collapse:collapse; background:transparent; border:none; }
+  thead { display:none; /* Hide headers for list view */ }
+  
+  tbody tr.video-row { 
+    border:1px solid var(--border); 
+    background:var(--row); 
+    display:block; 
+    margin-bottom:12px; 
+    border-radius:10px;
+    transition: background 0.2s;
   }
-  tbody tr.video-row { border-bottom:1px solid var(--border); }
-  tbody tr.video-row:hover { background:var(--rowHover); }
-  td { padding:10px; vertical-align:middle; }
-  .nowrap { white-space:nowrap; }
-  .title-cell { font-weight:600; }
+  tbody tr.video-row:hover { background:var(--rowHover); border-color:#374151; }
+  
+  td { padding:14px; display:block; width:100%; box-sizing:border-box; }
+  
+  /* Video Card Styles */
+  .v-title { 
+    font-size:16px; font-weight:600; line-height:1.4; margin-bottom:10px; color:#f3f4f6; 
+    display:block;
+  }
+  .v-meta { 
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; 
+    font-size:13px; color:var(--muted); 
+  }
+  .v-meta-item { display:flex; align-items:center; gap:6px; }
+  .bullet { color:#374151; }
+
   .badge {
-    display:inline-flex; gap:6px; align-items:center; border:1px solid #14532d; color:#bbf7d0;
-    background:rgba(34,197,94,.1); padding:2px 8px; border-radius:999px; font-size:12px;
+    display:inline-flex; gap:4px; align-items:center; border:1px solid #14532d; color:#bbf7d0;
+    background:rgba(34,197,94,.1); padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;
+    vertical-align:middle; margin-left:6px;
   }
   .badge.inprogress { border-color:#1e3a8a; color:#bfdbfe; background:rgba(96,165,250,.1); }
-  .pbar { height:8px; width:120px; background:#0b0d12; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+
+  .pbar { height:6px; width:80px; background:#000; border:1px solid #333; border-radius:999px; overflow:hidden; display:inline-block; }
   .pfill { height:100%; background:var(--accent); width:0%; transition:width .2s; }
   .pfill.done { background:var(--ok); }
-  .actions { display:flex; gap:8px; flex-wrap:wrap; }
-  .player-row td { padding:0; background:#06070b; }
+  
+  .actions { margin-left:auto; display:flex; gap:8px; }
+
+  /* Player */
+  .player-row td { padding:0; background:#000; border-radius:0 0 10px 10px; overflow:hidden; }
+  .player-row { border:1px solid var(--border); border-top:none; margin-top:-13px; margin-bottom:12px; display:block; }
   .player-box { aspect-ratio:16/9; width:100%; }
-  .hint { font-size:12px; color:var(--muted); }
+
+  /* Mobile Tweaks */
+  @media (max-width: 600px) {
+    .v-meta { align-items:flex-start; gap:8px; }
+    .actions { width:100%; margin-top:8px; justify-content:flex-start; }
+    .actions button { flex:1; justify-content:center; }
+    .pbar { width:60px; }
+    #searchBox { margin-bottom:8px; }
+    .flex > * { width:100%; } /* Stack filters on very small screens */
+    .flex > label { width:auto; } /* except checkboxes */
+  }
 </style>
 </head>
 <body>
 <header>
-  <div class="title">Multi‑Channel Viewer
-    <button id="settingsBtn">Settings</button>
-  </div>
-  <div class="subtitle">
-    Add <strong>Channel IDs</strong> get them at
-    <a href="https://ytpeek.com/tools/channel-id-finder">ytpeek.com</a>
+  <div class="title">
+    <span>Multi‑Channel Viewer</span>
+    <button id="settingsBtn" class="small">Settings</button>
   </div>
 </header>
 
-<div id="settings" class="container">
+<div id="settings" class="container" style="display:none;">
 
-  <!-- Add Channels -->
   <div class="panel">
     <h3>Add Channels</h3>
     <div class="muted small" style="margin-bottom:8px;">
-      Paste one per line. Get them at
-    <a href="https://ytpeek.com/tools/channel-id-finder" target="_blank">ytpeek.com</a>
-      Handles like <code>@name</code> aren’t supported by RSS—use the finder link.
+      Paste one per line. Get IDs at
+      <a href="https://ytpeek.com/tools/channel-id-finder" target="_blank">ytpeek.com</a>
     </div>
-    <textarea id="channelsInput" rows="3" placeholder="UC_x5XG1OV2P6uZZ5FSM9Ttw
-https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
-    <div class="flex" style="margin-top:8px;">
+    <textarea id="channelsInput" rows="3" placeholder="UC_x5XG1OV2P6uZZ5FSM9Ttw"></textarea>
+    <div class="flex" style="margin-top:12px;">
       <button id="addChannelsBtn" class="btn-ok">Add Channels</button>
       <button id="refreshBtn">Refresh Feeds</button>
-      <button id="clearBtn" class="btn-danger">Clear All Data</button>
-      <span id="status" class="muted small"></span>
+      <button id="clearBtn" class="btn-danger">Reset App</button>
     </div>
+    <div id="status" class="muted small" style="margin-top:8px;"></div>
 
-    <div style="margin-top:12px;">
-      <h3>Channels</h3>
+    <div style="margin-top:16px;">
+      <h3>Your Channels</h3>
       <div id="channelsList" class="chips"></div>
     </div>
   </div>
 
-  <!-- Backup & Settings -->
   <div class="panel">
     <h3>Backup & Settings</h3>
     <div class="flex">
-      <button id="exportBtn">Export</button>
-      <label class="btn" for="importFile" style="cursor:pointer;">Import</label>
+      <button id="exportBtn">Export Data</button>
+      <label class="btn" for="importFile" style="cursor:pointer; text-align:center;">Import Data</label>
       <input id="importFile" type="file" accept="application/json" style="display:none;">
-      <label class="flex" style="gap:8px;">
-        <input id="useProxy" type="checkbox"> <span class="small">Use CORS Proxy (helps if feeds fail)</span>
-      </label>
-      <select id="proxyUrl" style="width:260px;">
-        <option value="https://api.allorigins.win/raw?url=">AllOrigins (raw)</option>
-        <option value="https://r.jina.ai/">r.jina.ai</option>
-        <option value="https://cors.isomorphic-git.org/">isomorphic-git CORS</option>
-      </select>
-      <div class="small">Auto‑mark at: <span id="thVal">90%</span>
-        <input id="threshold" type="range" min="50" max="100" value="90">
-      </div>
     </div>
-    <div class="hint" style="margin-top:8px;">
-      If feeds don’t load due to CORS, enable the proxy and try another provider.
+    <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:12px;">
+        <label class="flex" style="gap:8px; margin-bottom:8px;">
+            <input id="useProxy" type="checkbox"> <span>Use CORS Proxy (fix feed errors)</span>
+        </label>
+        <select id="proxyUrl">
+            <option value="https://api.allorigins.win/raw?url=">AllOrigins (raw)</option>
+            <option value="https://r.jina.ai/">r.jina.ai</option>
+            <option value="https://cors.isomorphic-git.org/">isomorphic-git CORS</option>
+        </select>
+        <div class="small" style="margin-top:8px;">
+            Auto‑mark watched at: <span id="thVal">90%</span>
+            <input id="threshold" type="range" min="50" max="100" value="90" style="width:100%;">
+        </div>
     </div>
   </div>
   </div>
 
-  <!-- Tables -->
-  <div class="panel">
-    <!-- Global filters toolbar (applies to all tabs) -->
-    <div class="flex" style="justify-content:space-between; margin-bottom:8px;">
-      <div id="summary" class="muted small">No videos loaded yet.</div>
-      <div class="flex">
-        <input id="searchBox" type="text" placeholder="Search title/channel…" style="width:240px;">
-        <select id="channelFilter" style="width:220px;">
-          <option value="">All channels</option>
-        </select>
-        <label class="flex small" style="gap:6px;">
-          <input id="hideShorts" type="checkbox"> Hide Shorts (≤ 60s / #shorts)
-        </label>
-      </div>
+  <div class="container">
+    <div class="panel" style="padding:12px;">
+        <div class="flex" style="gap:8px;">
+            <input id="searchBox" type="text" placeholder="Search title or channel…">
+            <select id="channelFilter">
+            <option value="">All channels</option>
+            </select>
+        </div>
+        <div class="flex" style="justify-content:space-between; margin-top:12px;">
+             <div id="summary" class="muted small" style="align-self:center;">Loading...</div>
+             <label class="flex small" style="gap:6px; width:auto;">
+                <input id="hideShorts" type="checkbox"> Hide Shorts
+             </label>
+        </div>
     </div>
 
     <div class="tabs">
       <div class="tab active" data-tab="unwatched">Unwatched</div>
-      <div class="tab" data-tab="all">All</div>
-      <div class="tab" data-tab="watched">Watched</div>
+      <div class="tab" data-tab="all">All Videos</div>
+      <div class="tab" data-tab="watched">History</div>
     </div>
 
     <div id="tab-unwatched" class="tabpane active">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:34%;">Title</th>
-            <th style="width:24%;">Channel</th>
-            <th class="nowrap" style="width:16%;">Published</th>
-            <th style="width:14%;">Progress</th>
-            <th style="width:12%;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-unwatched"></tbody>
-      </table>
+      <table><tbody id="tbody-unwatched"></tbody></table>
     </div>
 
     <div id="tab-all" class="tabpane">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:34%;">Title</th>
-            <th style="width:24%;">Channel</th>
-            <th class="nowrap" style="width:16%;">Published</th>
-            <th style="width:14%;">Progress</th>
-            <th style="width:12%;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-all"></tbody>
-      </table>
+      <table><tbody id="tbody-all"></tbody></table>
     </div>
 
     <div id="tab-watched" class="tabpane">
-      <div class="muted small" style="margin-bottom:8px;">Videos appear here after hitting your threshold or finishing.</div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:34%;">Title</th>
-            <th style="width:24%;">Channel</th>
-            <th class="nowrap" style="width:16%;">Published</th>
-            <th style="width:14%;">Progress</th>
-            <th style="width:12%;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-watched"></tbody>
-      </table>
+      <div class="muted small" style="margin-bottom:8px; text-align:center;">
+        Videos appear here after you finish them.
+      </div>
+      <table><tbody id="tbody-watched"></tbody></table>
     </div>
   </div>
 
 
-<!-- YouTube IFrame API is injected dynamically on first play -->
-
 <script>
 /** =========================
- *  State
- *  ========================= */
-const STATE_KEY = 'ytMultiState_v4_table_hideShorts';
+ * State
+ * ========================= */
+const STATE_KEY = 'ytMultiState_v5_mobile';
 const defaultState = {
-  channels: [], // {id, title?}
-  videos: {},   // id -> {watched, progress, lastTime, duration, title, channelId, channelTitle, publishedAt, link}
+  channels: [],
+  videos: {},
   settings: {
     useProxy: true,
     proxyUrl: 'https://api.allorigins.win/raw?url=',
     threshold: 0.9,
-    hideShorts: true  // default ON per your preference
+    hideShorts: true
   },
   lastUpdated: 0
 };
@@ -246,7 +249,7 @@ function saveState(){ state.lastUpdated = Date.now(); localStorage.setItem(STATE
 
 /** Utils */
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
-function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?'':d.toLocaleString(); }
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?'':d.toLocaleDateString(); }
 function timeAgo(iso){
   const d = new Date(iso), now = new Date(), s = Math.floor((now-d)/1000);
   if (s<60) return `${s}s ago`; const m=Math.floor(s/60); if (m<60) return `${m}m ago`;
@@ -256,7 +259,6 @@ function timeAgo(iso){
 }
 function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-/** Channel input parsing */
 function extractChannelId(input){
   input = input.trim(); if (!input) return null;
   const m=input.match(/youtube\.com\/channel\/(UC[0-9A-Za-z_-]{20,})/i); if (m) return m[1];
@@ -264,7 +266,7 @@ function extractChannelId(input){
   return null;
 }
 
-/** Feed helpers */
+/** Feed Logic */
 function feedUrlForChannel(channelId){ return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`; }
 
 async function fetchTextWithFallback(url){
@@ -274,9 +276,9 @@ async function fetchTextWithFallback(url){
   if (!useProxy) candidates.push(url);
   const encoded = encodeURIComponent(url);
   if (proxyBase.includes('allorigins')) candidates.push(`${proxyBase}${encoded}`);
-  else if (proxyBase.includes('r.jina.ai')) candidates.push(`${proxyBase}${url}`);
   else candidates.push(`${proxyBase}${url}`);
   candidates.push(`https://r.jina.ai/${url}`, `https://cors.isomorphic-git.org/${url}`);
+  
   let lastErr=null; const tried=new Set();
   for (const c of candidates){
     if (tried.has(c)) continue; tried.add(c);
@@ -301,27 +303,18 @@ function parseYouTubeFeed(xmlText){
     const link = linkEl ? linkEl.getAttribute('href') : (videoId ? `https://www.youtube.com/watch?v=${videoId}` : '');
     const published = get('published') || get('updated') || '';
 
-    // Try to read duration from RSS (several possible places)
     let durationSec = 0;
     const ytDur = entry.querySelector('yt\\:duration');
     if (ytDur && ytDur.getAttribute) {
       const s = parseInt(ytDur.getAttribute('seconds')||'0', 10);
       if (!isNaN(s) && s>0) durationSec = s;
     }
-    const mc = entry.querySelector('media\\:group > media\\:content') || entry.getElementsByTagName('media:content')[0];
-    if (!durationSec && mc && mc.getAttribute) {
-      const s = parseInt(mc.getAttribute('duration')||'0', 10);
-      if (!isNaN(s) && s>0) durationSec = s;
-    }
-
     return { videoId, channelId, title, channelTitle: author, link, publishedAt: published, durationSec };
   }).filter(e=>e.videoId);
 }
 
-/** =========================
- *  YouTube Player
- *  ========================= */
-let YT_API_READY=false, pendingPlayerInits=[], players={}; // videoId -> {player,timer,lastSave}
+/** Player Logic */
+let YT_API_READY=false, pendingPlayerInits=[], players={}; 
 
 function loadYouTubeAPIOnce(){
   if (window._ytApiInjected) return;
@@ -345,7 +338,7 @@ function createPlayer({videoId, container, onReady}){
     width:'100%', videoId,
     playerVars:{ enablejsapi:1, rel:0, modestbranding:1, playsinline:1, autoplay:1, origin },
     events:{
-      onReady:(e)=>{ // resume & autoplay
+      onReady:(e)=>{ 
         const v=state.videos[videoId];
         if (v?.lastTime>0){ try{ e.target.seekTo(v.lastTime,true); }catch{} }
         try { e.target.playVideo(); } catch {}
@@ -364,11 +357,7 @@ function handleStateChange(videoId, e){
   switch(e.data){
     case P.PLAYING: start(); break;
     case P.PAUSED: case P.BUFFERING: case P.CUED: stop(); updateProgress(videoId); break;
-    case P.ENDED:
-      stop();
-      setWatched(videoId, 1.0);
-      collapsePlayerFor(videoId); // auto-collapse on finish
-      break;
+    case P.ENDED: stop(); setWatched(videoId, 1.0); collapsePlayerFor(videoId); break;
   }
 }
 
@@ -384,55 +373,52 @@ function updateProgress(videoId){
   if (!v.watched && progress>=threshold) v.watched=true;
   const now=Date.now(); if (!rec.lastSave || now-rec.lastSave>5000){ saveState(); rec.lastSave=now; }
   updateRowState(videoId);
-  renderWatchedTable(); // sync watched tab if flipped
 }
 
-/** Collapse player row for a given videoId */
 function collapsePlayerFor(videoId){
   $(`tr.player-row[data-for="${videoId}"]`).each((_,tr)=>{
-    const $pr=$(tr); if ($pr.is(':visible')) $pr.hide();
-    const $base=$pr.prev('tr.video-row[data-id="'+videoId+'"]');
-    $base.find('.playbtn').text('Play');
-    try { players[videoId]?.player?.pauseVideo(); } catch {}
+    const $pr=$(tr); 
+    if ($pr.is(':visible')) {
+        $pr.hide();
+        // find previous video row to reset button
+        const $base=$(`tr.video-row[data-id="${videoId}"]`);
+        $base.find('.playbtn').text('Play');
+        try { players[videoId]?.player?.pauseVideo(); } catch {}
+    }
   });
 }
 
-/** Explicit watchers */
 function setWatched(videoId, progress=1){
   const v=state.videos[videoId]||{}; v.watched=true; v.progress=Math.max(progress, v.progress||0);
-  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderWatchedTable(); renderUnwatchedTable(); updateSummary();
+  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderTablesAndSummary();
 }
 function setUnwatched(videoId){
   const v=state.videos[videoId]||{}; v.watched=false;
-  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderWatchedTable(); renderUnwatchedTable(); updateSummary();
+  state.videos[videoId]=v; saveState(); updateRowState(videoId); renderTablesAndSummary();
 }
 
-/** =========================
- *  Shorts detection
- *  ========================= */
+/** Shorts detection */
 function isShortFromFields({title='', link='', durationSec=0, duration=0}){
   const dur = Math.floor(durationSec || duration || 0);
-  if (dur > 0) return dur <= 60;              // duration heuristic
+  if (dur > 0) return dur <= 60;
   const t = (title||'').toLowerCase();
-  if (t.includes('#shorts')) return true;     // title hashtag fallback
-  if ((link||'').includes('/shorts/')) return true; // URL form fallback
+  if (t.includes('#shorts')) return true;
+  if ((link||'').includes('/shorts/')) return true;
   return false;
 }
 
-/** =========================
- *  Feeds & Rendering
- *  ========================= */
+/** UI Rendering */
 let latestFeedItems=[];
 
 async function refreshFeedsUI(){
   $('#status').text('Refreshing feeds…');
   try {
     latestFeedItems = await loadAllFeeds();
-    renderAllTables();
-    $('#status').text(`Loaded ${latestFeedItems.length} videos`);
+    renderTablesAndSummary();
+    $('#status').text(`Updated: ${new Date().toLocaleTimeString()}`);
   } catch(e){
     console.error(e);
-    $('#status').html(`<span class="muted" style="color:#fecaca;">Feed error: ${escapeHtml(e.message||'Unknown')}</span>`);
+    $('#status').html(`<span style="color:var(--danger)">Error: ${escapeHtml(e.message||'Unknown')}</span>`);
   }
 }
 
@@ -457,24 +443,26 @@ async function loadAllFeeds(){
   return out;
 }
 
-function renderAllTables(){
-  renderUnwatchedTable();
-  renderAllTable();
-  renderWatchedTable();
-  updateSummary();
-}
-
-function updateSummary(){
+function renderTablesAndSummary(){
+  renderTable('#tbody-unwatched', i => !state.videos[i.videoId]?.watched);
+  renderTable('#tbody-all', i => true);
+  renderTable('#tbody-watched', i => state.videos[i.videoId]?.watched, true);
+  
   const all = filteredItems(latestFeedItems).length;
   const unw = filteredItems(latestFeedItems).filter(it => !state.videos[it.videoId]?.watched).length;
   $('#summary').text(`${unw} unwatched · ${all} total`);
 }
 
-/** Filter helper (applies channel/search/shorts) */
 function filteredItems(sourceItems){
   const q = ($('#searchBox').val()||'').toLowerCase();
   const cf = $('#channelFilter').val()||'';
   const hideShorts = !!$('#hideShorts').prop('checked');
+  
+  // For watched tab logic, we might need a larger pool if they aren't in feed anymore
+  // But for now we just filter feed items + known watched items if we wanted
+  // The logic below assumes we only show what's in the RSS feed + history of those.
+  // To show OLD watched videos not in feed, we'd need to merge state.videos keys.
+  
   return sourceItems.filter(it=>{
     if (cf && it.channelId !== cf) return false;
     if (hideShorts && isShortFromFields(it)) return false;
@@ -484,56 +472,39 @@ function filteredItems(sourceItems){
   });
 }
 
-function renderUnwatchedTable(){
-  const items = filteredItems(latestFeedItems).filter(it => !state.videos[it.videoId]?.watched);
-  const $tb = $('#tbody-unwatched').empty();
+function renderTable(tbodyId, filterFn, isWatchedTab=false){
+  let items;
+  if (isWatchedTab) {
+    // For watched tab, we pull from state to ensure we see history even if RSS fell off
+    // Simplified: Mixing RSS items and local state items
+    const q = ($('#searchBox').val()||'').toLowerCase();
+    const cf = $('#channelFilter').val()||'';
+    const hideShorts = !!$('#hideShorts').prop('checked');
+    items = Object.entries(state.videos)
+      .filter(([id, v]) => v.watched)
+      .map(([id,v]) => ({ videoId:id, ...v }))
+      .filter(v => {
+        if (cf && v.channelId !== cf) return false;
+        if (hideShorts && isShortFromFields(v)) return false;
+        if (!q) return true;
+        return `${v.title} ${v.channelTitle}`.toLowerCase().includes(q);
+      })
+      .sort((a,b)=> (new Date(b.publishedAt||0)) - (new Date(a.publishedAt||0)));
+  } else {
+    items = filteredItems(latestFeedItems).filter(filterFn);
+  }
+
+  const $tb = $(tbodyId).empty();
   items.forEach(it => {
     ensureVideoStatePrimed(it);
-    const v = state.videos[it.videoId]; const pct = Math.round((v.progress||0)*100);
-    const $row = buildVideoRow(it.videoId, it.title, it.channelTitle||it.channelId, it.publishedAt, pct, v.watched);
-    attachRowHandlers($row, it.videoId);
-    $tb.append($row);
-  });
-}
-
-function renderAllTable(){
-  const items = filteredItems(latestFeedItems);
-  const $tb = $('#tbody-all').empty();
-  items.forEach(it=>{
-    ensureVideoStatePrimed(it);
-    const v = state.videos[it.videoId]; const pct = Math.round((v.progress||0)*100);
-    const $row = buildVideoRow(it.videoId, it.title, it.channelTitle||it.channelId, it.publishedAt, pct, v.watched);
-    attachRowHandlers($row, it.videoId);
-    $tb.append($row);
-  });
-}
-
-function renderWatchedTable(){
-  const q = ($('#searchBox').val()||'').toLowerCase();
-  const cf = $('#channelFilter').val()||'';
-  const hideShorts = !!$('#hideShorts').prop('checked');
-
-  const list = Object.entries(state.videos)
-    .filter(([id,v]) => v.watched)
-    .map(([id,v]) => ({ videoId:id, ...v }))
-    .filter(v => {
-      if (cf && v.channelId !== cf) return false;
-      if (hideShorts && isShortFromFields(v)) return false;
-      if (!q) return true;
-      const hay = `${v.title||''} ${v.channelTitle||''}`.toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a,b)=> (new Date(b.publishedAt||0)) - (new Date(a.publishedAt||0)));
-  const $tb = $('#tbody-watched').empty();
-  list.forEach(v=>{
+    const v = state.videos[it.videoId]; 
     const pct = Math.round((v.progress||0)*100);
-    const $row = buildVideoRow(v.videoId, v.title||v.videoId, v.channelTitle||v.channelId||'', v.publishedAt||'', pct, true);
-    attachRowHandlers($row, v.videoId);
+    const $row = buildVideoRow(it.videoId, it.title, it.channelTitle||it.channelId, it.publishedAt, pct, v.watched);
+    attachRowHandlers($row, it.videoId);
     $tb.append($row);
   });
 }
 
-/** Helpers for rendering rows */
 function ensureVideoStatePrimed(it){
   const existing = state.videos[it.videoId];
   if (!existing){
@@ -543,46 +514,54 @@ function ensureVideoStatePrimed(it){
       publishedAt: it.publishedAt, link: it.link
     };
   } else {
-    existing.title ||= it.title; existing.channelId ||= it.channelId; existing.channelTitle ||= it.channelTitle;
-    existing.publishedAt ||= it.publishedAt; existing.link ||= it.link;
-    if (!existing.duration && it.durationSec) existing.duration = it.durationSec;
+    // Update metadata if found in feed again
+    existing.title = it.title || existing.title;
+    existing.channelTitle = it.channelTitle || existing.channelTitle;
+    existing.publishedAt = it.publishedAt || existing.publishedAt;
   }
 }
 
-function buildVideoRow(videoId, title, channelLabel, publishedAt, pct, watched){
-  return $(`
+/** New Layout Generator */
+function buildVideoRow(videoId, title, channel, publishedAt, pct, watched){
+    const ago = publishedAt ? timeAgo(publishedAt) : '';
+    const badgeHtml = watched 
+        ? `<span class="badge">Watched ✓</span>` 
+        : (pct > 0 ? `<span class="badge inprogress">In Progress</span>` : '');
+
+    return $(`
     <tr class="video-row" data-id="${videoId}">
-      <td class="title-cell">
-        ${escapeHtml(title)}
-        <span class="badge ${watched ? '' : (pct>0 ? 'inprogress':'')}" style="margin-left:8px; ${watched||pct>0?'':'display:none;'}">
-          ${watched ? 'Watched ✓' : 'In progress'}
-        </span>
-      </td>
-      <td>${escapeHtml(channelLabel)}</td>
-      <td class="nowrap" title="${fmtDate(publishedAt)}">${publishedAt ? timeAgo(publishedAt) : ''}</td>
-      <td><div class="pbar"><div class="pfill ${watched?'done':''}" style="width:${pct}%;"></div></div></td>
       <td>
-        <div class="actions">
-          <button class="playbtn">Play</button>
-          <button class="markbtn" style="${watched?'display:none;':''}">Mark watched</button>
-          <button class="unmarkbtn" style="${watched?'':'display:none;'}">Unwatch</button>
+        <div class="v-title">${escapeHtml(title)} ${badgeHtml}</div>
+        <div class="v-meta">
+            <span class="v-meta-item" style="color:var(--accent-2); font-weight:600;">${escapeHtml(channel)}</span>
+            <span class="bullet">•</span>
+            <span class="v-meta-item" title="${fmtDate(publishedAt)}">${ago}</span>
+            <span class="bullet">•</span>
+            <div class="pbar"><div class="pfill ${watched?'done':''}" style="width:${pct}%;"></div></div>
+            
+            <div class="actions">
+                <button class="playbtn">${watched ? 'Replay' : 'Play'}</button>
+                <button class="markbtn" style="${watched?'display:none;':''}">Mark Done</button>
+                <button class="unmarkbtn" style="${watched?'':'display:none;'}">Unwatch</button>
+                <button class="openbtn" title="Open on YouTube">↗</button>
+            </div>
         </div>
       </td>
     </tr>
-  `);
+    `);
 }
 
-/** Expand/collapse player row after the given row */
 function togglePlayerRow(videoId, baseRow, open){
   const $base = $(baseRow);
   let $pr = $base.next();
-  const already = $pr.hasClass('player-row');
+  // Check if next row is actually the player row for this video
+  const isPlayer = $pr.hasClass('player-row') && $pr.attr('data-for') === videoId;
 
   if (open){
-    if (!already){
+    if (!isPlayer){
       $pr = $(`
         <tr class="player-row" data-for="${videoId}">
-          <td colspan="5">
+          <td>
             <div class="player-box">
               <div id="player-${videoId}" style="width:100%; height:100%;"></div>
             </div>
@@ -598,7 +577,7 @@ function togglePlayerRow(videoId, baseRow, open){
     }
     $base.find('.playbtn').text('Hide');
   } else {
-    if (already){
+    if (isPlayer){
       $pr.hide();
       try { players[videoId]?.player?.pauseVideo(); } catch {}
     }
@@ -606,25 +585,25 @@ function togglePlayerRow(videoId, baseRow, open){
   }
 }
 
-/** Wire row handlers */
 function attachRowHandlers($row, videoId){
   const playToggle = ()=>{
-    const open = !($row.next().hasClass('player-row') && $row.next().is(':visible'));
-    togglePlayerRow(videoId, $row[0], open);
+    const $next = $row.next();
+    const isVisible = $next.hasClass('player-row') && $next.is(':visible') && $next.attr('data-for') === videoId;
+    togglePlayerRow(videoId, $row[0], !isVisible);
   };
+  
+  // Make title clickable too for ease
+  $row.find('.v-title').css('cursor','pointer').on('click', playToggle);
   $row.find('.playbtn').on('click', playToggle);
-  $row.on('dblclick', playToggle);
 
   $row.find('.markbtn').on('click', ()=> setWatched(videoId, 1));
   $row.find('.unmarkbtn').on('click', ()=> setUnwatched(videoId));
-
   $row.find('.openbtn').on('click', ()=>{
     const link = state.videos[videoId]?.link || `https://www.youtube.com/watch?v=${videoId}`;
     window.open(link, '_blank', 'noopener');
   });
 }
 
-/** Reflect progress/watched on any matching rows */
 function updateRowState(videoId){
   const v = state.videos[videoId] || {};
   const pct = Math.round((v.progress||0)*100);
@@ -632,83 +611,57 @@ function updateRowState(videoId){
 
   $(`tr.video-row[data-id="${videoId}"]`).each((_, el)=>{
     const $row = $(el);
-    const $fill = $row.find('.pfill'); $fill.css('width', pct+'%').toggleClass('done', watched);
-    const $badge = $row.find('.badge');
-    if (watched){ $badge.removeClass('inprogress').show().text('Watched ✓'); $row.find('.markbtn').hide(); $row.find('.unmarkbtn').show(); }
-    else { if (pct>0){ $badge.addClass('inprogress').show().text('In progress'); } else { $badge.hide(); } $row.find('.markbtn').show(); $row.find('.unmarkbtn').hide(); }
+    const $fill = $row.find('.pfill'); 
+    $fill.css('width', pct+'%').toggleClass('done', watched);
+    
+    // Toggle badge and buttons
+    const $title = $row.find('.v-title');
+    $title.find('.badge').remove();
+    if(watched) $title.append(`<span class="badge">Watched ✓</span>`);
+    else if(pct>0) $title.append(`<span class="badge inprogress">In Progress</span>`);
+
+    if(watched){
+        $row.find('.markbtn').hide(); 
+        $row.find('.unmarkbtn').show();
+        $row.find('.playbtn').text('Replay');
+    } else {
+        $row.find('.markbtn').show(); 
+        $row.find('.unmarkbtn').hide();
+    }
   });
 }
 
-/** Channels UI */
-function renderChannelFilter(){
-  const $sel = $('#channelFilter'); const prev = $sel.val();
-  $sel.empty().append(`<option value="">All channels</option>`);
-  state.channels.forEach(c=>{
-    const label = c.title || c.id; // show channel name when known
-    $sel.append(`<option value="${escapeHtml(c.id)}">${escapeHtml(label)}</option>`);
-  });
-  if (prev) $sel.val(prev);
-}
-
-function renderChannelsList(){
-  const $wrap = $('#channelsList').empty();
-  state.channels.forEach(c=>{
-    const label = c.title ? c.title : c.id;
-    const $chip = $(`
-      <div class="chip">
-        <span>${escapeHtml(label)}</span>
-        <span class="x" title="Remove" data-id="${c.id}">×</span>
-      </div>`);
-    $chip.find('.x').on('click', ()=>{
-      if (!confirm('Remove this channel?')) return;
-      state.channels = state.channels.filter(x=>x.id!==c.id);
-      saveState(); renderChannelsList(); renderChannelFilter(); refreshFeedsUI();
-    });
-    $wrap.append($chip);
-  });
-  renderChannelFilter();
-}
-
-/** =========================
- *  Events
- *  ========================= */
-$('#settingsBtn').on('click', function () {
-    $('#settings').toggle(); // This toggles visibility
-  });
-
+/** Settings & Events */
+$('#settingsBtn').on('click', () => $('#settings').toggle());
 
 $('#addChannelsBtn').on('click', ()=>{
   const raw=$('#channelsInput').val()||'';
   const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  let added=0, skipped=0;
+  let added=0;
   lines.forEach(line=>{
     const id=extractChannelId(line);
-    if (!id) { skipped++; return; }
-    if (state.channels.some(c=>c.id===id)) { skipped++; return; }
+    if (!id || state.channels.some(c=>c.id===id)) return;
     state.channels.push({id, title:''}); added++;
   });
   saveState(); $('#channelsInput').val('');
-  renderChannelsList(); if (added>0) refreshFeedsUI();
-  $('#status').text(`Added ${added}. ${skipped? 'Skipped '+skipped : ''}`);
+  renderChannelsList(); 
+  if (added>0) refreshFeedsUI();
+  // Hide settings if we successfully added stuff and it was the first time
+  if (state.channels.length > 0 && added > 0) $('#settings').hide();
 });
 
 $('#refreshBtn').on('click', refreshFeedsUI);
 
 $('#clearBtn').on('click', ()=>{
-  if (!confirm('This clears channels and watch history. Continue?')) return;
+  if (!confirm('This clears ALL channels and watch history. Continue?')) return;
   state = JSON.parse(JSON.stringify(defaultState)); saveState();
-  try { Object.values(players).forEach(p=>p.player?.destroy()); } catch {}
-  players={}; YT_API_READY=false;
-  $('#channelsList').empty();
-  $('#tbody-all, #tbody-watched, #tbody-unwatched').empty();
-  $('#summary').text('No videos loaded yet.'); applySettingsToUI();
+  location.reload(); 
 });
 
 $('#exportBtn').on('click', ()=>{
   const blob=new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`yt-multi-export-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`yt-multi-${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); a.remove();
 });
 
@@ -718,51 +671,67 @@ $('#importFile').on('change', (e)=>{
   r.onload=()=>{
     try{
       const data=JSON.parse(r.result);
-      if (!data || !data.channels || !data.settings) throw new Error('Invalid backup file.');
+      if (!data || !data.channels) throw new Error('Invalid file');
       state=Object.assign({}, defaultState, data);
-      state.settings=Object.assign({}, defaultState.settings, state.settings||{});
-      state.channels=Array.isArray(state.channels)?state.channels:[];
-      state.videos=state.videos||{};
-      saveState(); applySettingsToUI(); renderChannelsList(); refreshFeedsUI();
-      $('#status').html('<span style="color:#dcfce7;">Import complete.</span>');
-    } catch(err){ alert('Import failed: '+(err.message||'Unknown error')); }
-    finally { $('#importFile').val(''); }
+      saveState(); location.reload();
+    } catch(err){ alert('Import failed'); }
   };
   r.readAsText(file);
 });
 
-/** Tabs */
+/* Tabs */
 $('.tab').on('click', function(){
   $('.tab').removeClass('active'); $(this).addClass('active');
   const tab=$(this).data('tab'); $('.tabpane').removeClass('active'); $(`#tab-${tab}`).addClass('active');
 });
 
-/** Filters apply to all tabs */
-$('#searchBox').on('input', ()=>{ renderAllTables(); });
-$('#channelFilter').on('change', ()=>{ renderAllTables(); });
+/* Filters */
+$('#searchBox').on('input', renderTablesAndSummary);
+$('#channelFilter').on('change', renderTablesAndSummary);
 $('#hideShorts').on('change', function(){
-  state.settings.hideShorts = !!this.checked; saveState(); renderAllTables();
+  state.settings.hideShorts = !!this.checked; saveState(); renderTablesAndSummary();
 });
-
-/** Settings */
-function applySettingsToUI(){
-  $('#useProxy').prop('checked', !!state.settings.useProxy);
-  $('#proxyUrl').val(state.settings.proxyUrl || 'https://api.allorigins.win/raw?url=');
-  const pct=Math.round((state.settings.threshold||0.9)*100);
-  $('#threshold').val(pct); $('#thVal').text(`${pct}%`);
-  $('#hideShorts').prop('checked', !!state.settings.hideShorts);
-}
 $('#useProxy').on('change', function(){ state.settings.useProxy=this.checked; saveState(); });
 $('#proxyUrl').on('change', function(){ state.settings.proxyUrl=this.value; saveState(); });
 $('#threshold').on('input', function(){ $('#thVal').text(`${Number(this.value)}%`); });
 $('#threshold').on('change', function(){
-  const pct=Number(this.value||90); state.settings.threshold=Math.max(0.5, Math.min(1.0, pct/100)); saveState();
+  state.settings.threshold=Math.max(0.5, Math.min(1.0, this.value/100)); saveState();
 });
 
+function renderChannelsList(){
+  const $sel = $('#channelFilter').empty().append('<option value="">All channels</option>');
+  const $wrap = $('#channelsList').empty();
+  
+  state.channels.forEach(c=>{
+    const label = c.title || c.id;
+    $sel.append(`<option value="${escapeHtml(c.id)}">${escapeHtml(label)}</option>`);
+    
+    const $chip = $(`<div class="chip"><span>${escapeHtml(label)}</span><span class="x">×</span></div>`);
+    $chip.find('.x').on('click', ()=>{
+      if(confirm('Remove channel?')){
+        state.channels = state.channels.filter(x=>x.id!==c.id);
+        saveState(); renderChannelsList(); refreshFeedsUI();
+      }
+    });
+    $wrap.append($chip);
+  });
+}
+
 /** Startup */
-applySettingsToUI();
+$('#useProxy').prop('checked', !!state.settings.useProxy);
+$('#proxyUrl').val(state.settings.proxyUrl || 'https://api.allorigins.win/raw?url=');
+$('#threshold').val((state.settings.threshold||0.9)*100);
+$('#hideShorts').prop('checked', !!state.settings.hideShorts);
+
 renderChannelsList();
-if (state.channels.length) refreshFeedsUI();
+
+// Show settings automatically if no channels exist
+if (state.channels.length === 0) {
+    $('#settings').show();
+} else {
+    $('#settings').hide();
+    refreshFeedsUI();
+}
 </script>
 </body>
 </html>
