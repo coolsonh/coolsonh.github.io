@@ -71,14 +71,15 @@
   tbody tr.video-row { 
     border:1px solid var(--border); 
     background:var(--row); 
-    display:block; 
-    margin-bottom:12px; 
-    border-radius:10px;
+    display:block;
     transition: background 0.2s;
   }
   tbody tr.video-row:hover { background:var(--rowHover); border-color:#374151; }
   
-  td { padding:14px; display:block; width:100%; box-sizing:border-box; }
+  td { /* padding-bottom: 5px; */
+padding-top: 5px;
+padding-left: 10px;
+padding-right: 10px;display:block; width:100%; box-sizing:border-box; }
   
   /* Video Card Styles */
   .v-title { 
@@ -598,10 +599,6 @@ function attachRowHandlers($row, videoId){
 
   $row.find('.markbtn').on('click', ()=> setWatched(videoId, 1));
   $row.find('.unmarkbtn').on('click', ()=> setUnwatched(videoId));
-  $row.find('.openbtn').on('click', ()=>{
-    const link = state.videos[videoId]?.link || `https://www.youtube.com/watch?v=${videoId}`;
-    window.open(link, '_blank', 'noopener');
-  });
 }
 
 function updateRowState(videoId){
